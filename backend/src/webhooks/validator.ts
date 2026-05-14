@@ -14,17 +14,17 @@ export function validateSignature(req: Request, res: Response, next: NextFunctio
     return;
   }
 
-  const rawBody = req.body as Buffer;
-  const expected = `sha256=${createHmac('sha256', secret).update(rawBody).digest('hex')}`;
-
-  // 길이가 다르면 timingSafeEqual이 throw하므로 먼저 체크
-  if (signature.length !== expected.length) {
-    res.status(401).json({ error: 'Invalid signature' });
+  if (!Buffer.isBuffer(req.body)) {
+    res.status(500).json({ error: 'Invalid body type' });
     return;
   }
 
-  const isValid = timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
-  if (!isValid) {
+  const expected = `sha256=${createHmac('sha256', secret).update(req.body).digest('hex')}`;
+
+  const signatureBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
+
+  if (signatureBuffer.length !== expectedBuffer.length || !timingSafeEqual(signatureBuffer, expectedBuffer)) {
     res.status(401).json({ error: 'Invalid signature' });
     return;
   }
