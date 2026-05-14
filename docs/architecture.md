@@ -92,3 +92,84 @@ graph TB
 | **Dashboard** | 리뷰 현황 및 시스템 상태 조회 |
 | **Review History** | 과거 AI 리뷰 이력 조회 |
 | **Settings** | Webhook 연결, AI 모델 설정, 리뷰 옵션 관리 |
+
+---
+
+## 4. 데이터 흐름
+
+### 4.1 전체 흐름 시퀀스
+
+```mermaid
+sequenceDiagram
+  actor Dev as 개발자
+  participant GH as GitHub
+  participant Server as Backend Server
+  participant AI as Claude API
+
+  Dev->>GH: PR 생성 / 커밋 푸시
+  GH->>Server: POST /api/webhooks/github<br/>(X-Hub-Signature-256, X-GitHub-Event: pull_request)
+
+  Server->>Server: HMAC-SHA256 서명 검증
+  alt 서명 불일치
+    Server-->>GH: 401 Unauthorized
+  end
+
+  Server->>Server: action 필터링<br/>(opened | synchronize | reopened)
+
+  Server->>GH: GET /repos/{owner}/{repo}/pulls/{number}/files
+  GH-->>Server: 변경 파일 목록 + patch(diff)
+
+  Server->>Server: 프롬프트 구성<br/>(diff + 리뷰 지침)
+
+  Server->>AI: POST /v1/messages<br/>(system prompt + diff)
+  AI-->>Server: 코드 리뷰 응답 (JSON)
+
+  Server->>Server: Markdown 포맷 변환
+
+  Server->>GH: POST /repos/{owner}/{repo}/issues/{number}/comments
+  GH-->>Dev: PR 코멘트 알림
+```
+
+### 4.2 Webhook 페이로드 핵심 필드
+
+```
+POST /api/webhooks/github
+Headers:
+  X-GitHub-Event: pull_request
+  X-Hub-Signature-256: sha256=<hmac>
+
+Body:
+{
+  action: "opened" | "synchronize" | "reopened",
+  pull_request: {
+    number: 42,
+    title: "feat: 로그인 기능 추가",
+    body: "...",
+    head: { sha: "abc123", ref: "feat/login" },
+    base: { ref: "main" },
+    user: { login: "dev-name" },
+    additions: 120,
+    deletions: 30,
+    changed_files: 5
+  },
+  repository: {
+    full_name: "org/repo"
+  }
+}
+```
+
+### 4.3 AI 리뷰 프롬프트 구조
+
+```
+System:
+  너는 시니어 소프트웨어 엔지니어로서 코드 리뷰를 수행한다.
+  다음 관점에서 리뷰하라: 버그, 보안, 성능, 가독성, 테스트
+
+User:
+  PR 제목: {title}
+  PR 설명: {body}
+
+  변경 파일:
+  --- {filename} ---
+  {patch}
+```
