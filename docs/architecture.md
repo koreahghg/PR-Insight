@@ -173,3 +173,92 @@ User:
   --- {filename} ---
   {patch}
 ```
+
+---
+
+## 5. 확장 고려사항
+
+### 5.1 단기 확장
+
+```mermaid
+graph LR
+  subgraph "현재 (MVP)"
+    WH[Webhook] --> SYNC[동기 처리] --> AI[AI 호출] --> CMT[코멘트]
+  end
+
+  subgraph "확장 v2"
+    WH2[Webhook] --> QUEUE[Job Queue<br/>Bull/Redis] --> WORKER[Worker] --> AI2[AI 호출] --> CMT2[코멘트]
+  end
+```
+
+| 항목 | MVP | 확장 |
+|---|---|---|
+| **처리 방식** | 동기 (Request-Response) | 비동기 (Job Queue) |
+| **AI 모델** | Claude Sonnet 단일 | 모델 선택 가능 |
+| **저장소** | 없음 | PostgreSQL (리뷰 이력) |
+| **인증** | Webhook Secret만 | GitHub OAuth App |
+| **알림** | PR 코멘트 | Slack / 이메일 추가 |
+
+### 5.2 다중 레포지토리 지원
+
+```mermaid
+graph TD
+  GH_ORG[GitHub Organization]
+  GH_ORG --> REPO_A[Repo A]
+  GH_ORG --> REPO_B[Repo B]
+  GH_ORG --> REPO_C[Repo C]
+
+  REPO_A -->|webhook| SERVER
+  REPO_B -->|webhook| SERVER
+  REPO_C -->|webhook| SERVER
+
+  SERVER[CodePulse Server] --> CONFIG_DB[(설정 DB<br/>per-repo 리뷰 정책)]
+  CONFIG_DB --> SERVER
+  SERVER --> AI[AI Engine]
+```
+
+### 5.3 에러 처리 전략
+
+| 실패 지점 | 처리 방법 |
+|---|---|
+| Webhook 서명 불일치 | 즉시 401 반환, 로그 기록 |
+| GitHub API rate limit | Exponential backoff 재시도 (최대 3회) |
+| Claude API 타임아웃 | 30초 timeout, 실패 시 fallback 코멘트 게시 |
+| 코멘트 게시 실패 | Dead Letter Queue 저장 → 수동 재처리 |
+
+### 5.4 보안 고려사항
+
+- **Webhook Secret**: `X-Hub-Signature-256` HMAC 검증 필수
+- **GitHub Token**: 최소 권한 (`pull_requests: write`, `contents: read`)
+- **API Key 관리**: 환경변수 분리, `.env` git 제외
+- **Rate Limit 대응**: GitHub API 5000 req/hr 제한 고려한 캐싱
+
+---
+
+## 6. 디렉터리 구조 (목표)
+
+```
+PR-Insight/
+├── frontend/
+│   └── src/
+│       ├── pages/
+│       │   ├── Dashboard.tsx
+│       │   └── Settings.tsx
+│       └── components/
+│           └── ReviewHistory.tsx
+└── backend/
+    └── src/
+        ├── index.ts
+        ├── webhooks/
+        │   ├── handler.ts        # POST /api/webhooks/github
+        │   └── validator.ts      # HMAC-SHA256 서명 검증
+        ├── github/
+        │   ├── client.ts         # GitHub REST API 래퍼
+        │   └── diffFetcher.ts    # PR diff 수집
+        ├── ai/
+        │   ├── reviewEngine.ts   # Claude API 호출
+        │   └── promptBuilder.ts  # 프롬프트 구성
+        └── review/
+            ├── formatter.ts      # Markdown 포맷 변환
+            └── poster.ts         # GitHub 코멘트 게시
+```
