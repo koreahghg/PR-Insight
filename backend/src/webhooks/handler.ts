@@ -40,7 +40,13 @@ export function handleWebhook(req: Request, res: Response): void {
     return;
   }
 
-  const payload = JSON.parse((req.body as Buffer).toString()) as PullRequestPayload;
+  let payload: PullRequestPayload;
+  try {
+    payload = JSON.parse((req.body as Buffer).toString()) as PullRequestPayload;
+  } catch {
+    res.status(400).json({ error: 'Invalid JSON payload' });
+    return;
+  }
 
   if (!HANDLED_ACTIONS.has(payload.action)) {
     console.log(`[Webhook] Ignored PR action: ${payload.action}`);
