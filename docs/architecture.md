@@ -24,7 +24,7 @@ graph TB
   subgraph Backend["Backend (Express)"]
     WH_HANDLER[Webhook Handler<br/>/api/webhooks/github]
     WH_VALIDATOR[Signature Validator<br/>HMAC-SHA256]
-    EVENT_ROUTER[Event Router<br/>PR opened/synchronize]
+    EVENT_ROUTER[Event Router<br/>PR opened/synchronize/reopened]
     DIFF_FETCHER[Diff Fetcher<br/>GitHub API Client]
     AI_ENGINE[AI Review Engine<br/>Claude API]
     REVIEW_FORMATTER[Review Formatter]
@@ -223,7 +223,7 @@ graph TD
 |---|---|
 | Webhook 서명 불일치 | 즉시 401 반환, 로그 기록 |
 | GitHub API rate limit | Exponential backoff 재시도 (최대 3회) |
-| Claude API 타임아웃 | 30초 timeout, 실패 시 fallback 코멘트 게시 |
+| Claude API 타임아웃 | 60초 이상 timeout, 실패 시 fallback 코멘트 게시 |
 | 코멘트 게시 실패 | Dead Letter Queue 저장 → 수동 재처리 |
 
 ### 5.4 보안 고려사항
@@ -231,7 +231,7 @@ graph TD
 - **Webhook Secret**: `X-Hub-Signature-256` HMAC 검증 필수
 - **GitHub Token**: 최소 권한 (`pull_requests: write`, `contents: read`)
 - **API Key 관리**: 환경변수 분리, `.env` git 제외
-- **Rate Limit 대응**: GitHub API 5000 req/hr 제한 고려한 캐싱
+- **Rate Limit 대응**: GitHub 인증 방식(App/PAT)에 따른 제한 고려 및 캐싱
 
 ---
 
