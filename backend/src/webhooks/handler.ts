@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { GitHubWebhookPayload } from '../github/types';
 import { parsePRPayload } from '../pr/parser';
+import { analyzeDiff } from '../pr/diffAnalyzer';
 
 const HANDLED_ACTIONS = new Set(['opened', 'synchronize', 'reopened']);
 
@@ -32,12 +33,14 @@ export function handleWebhook(req: Request, res: Response): void {
 
   void parsePRPayload(payload)
     .then((parsed) => {
-      console.log('[PR] Parsed', {
-        repo: parsed.repositoryFullName,
-        number: parsed.number,
-        title: parsed.title,
-        author: parsed.author,
-        files: parsed.files.map((f) => f.filename),
+      const diff = analyzeDiff(parsed);
+      console.log('[PR] Analyzed', {
+        repo: diff.repository,
+        number: diff.prNumber,
+        title: diff.title,
+        author: diff.author,
+        files: diff.fileSummaries.map(f => `${f.filename} (+${f.additions}/-${f.deletions})`),
+        totalChunks: diff.chunks.length,
       });
     })
     .catch((err: unknown) => {
