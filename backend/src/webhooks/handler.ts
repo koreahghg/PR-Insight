@@ -1,33 +1,6 @@
 import { Request, Response } from 'express';
-
-interface GitHubUser {
-  login: string;
-}
-
-interface GitHubRef {
-  sha: string;
-  ref: string;
-}
-
-interface PullRequest {
-  number: number;
-  title: string;
-  body: string | null;
-  head: GitHubRef;
-  base: Pick<GitHubRef, 'ref'>;
-  user: GitHubUser;
-  additions: number;
-  deletions: number;
-  changed_files: number;
-}
-
-interface PullRequestPayload {
-  action: string;
-  pull_request: PullRequest;
-  repository: {
-    full_name: string;
-  };
-}
+import { GitHubWebhookPayload } from '../github/types';
+import { parsePRPayload } from '../pr/parser';
 
 const HANDLED_ACTIONS = new Set(['opened', 'synchronize', 'reopened']);
 
@@ -40,9 +13,9 @@ export function handleWebhook(req: Request, res: Response): void {
     return;
   }
 
-  let payload: PullRequestPayload;
+  let payload: GitHubWebhookPayload;
   try {
-    payload = JSON.parse((req.body as Buffer).toString()) as PullRequestPayload;
+    payload = JSON.parse((req.body as Buffer).toString()) as GitHubWebhookPayload;
   } catch {
     res.status(400).json({ error: 'Invalid JSON payload' });
     return;
@@ -54,21 +27,20 @@ export function handleWebhook(req: Request, res: Response): void {
     return;
   }
 
-  const { pull_request: pr, repository } = payload;
+  // GitHub 10초 타임아웃 내 즉시 응답 후 비동기 처리
+  res.status(200).json({ received: true, pr: payload.number });
 
-  console.log('[PR Event] Received', {
-    repo: repository.full_name,
-    action: payload.action,
-    number: pr.number,
-    title: pr.title,
-    author: pr.user.login,
-    base: pr.base.ref,
-    head: pr.head.ref,
-    sha: pr.head.sha,
-    additions: pr.additions,
-    deletions: pr.deletions,
-    changedFiles: pr.changed_files,
-  });
-
-  res.status(200).json({ received: true, pr: pr.number });
+  void parsePRPayload(payload)
+    .then((parsed) => {
+      console.log('[PR] Parsed', {
+        repo: parsed.repositoryFullName,
+        number: parsed.number,
+        title: parsed.title,
+        author: parsed.author,
+        files: parsed.files.map((f) => f.filename),
+      });
+    })
+    .catch((err: unknown) => {
+      console.error('[PR] Parse failed', err instanceof Error ? err.message : err);
+    });
 }
