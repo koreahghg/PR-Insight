@@ -14,8 +14,6 @@ export interface DiffHunk {
   oldStart: number
   newStart: number
   lines: DiffLine[]
-  addedLines: string[]
-  removedLines: string[]
 }
 
 export interface AnalyzedFileDiff {
@@ -66,7 +64,7 @@ function parseHunkHeader(header: string): { oldStart: number; newStart: number }
 }
 
 export function parsePatch(patch: string): DiffHunk[] {
-  const lines = patch.split('\n')
+  const lines = patch.split(/\r?\n/)
   const hunks: DiffHunk[] = []
   let currentHunk: DiffHunk | null = null
   let oldLineNum = 0
@@ -78,28 +76,17 @@ export function parsePatch(patch: string): DiffHunk[] {
       const { oldStart, newStart } = parseHunkHeader(line)
       oldLineNum = oldStart
       newLineNum = newStart
-      currentHunk = {
-        header: line,
-        oldStart,
-        newStart,
-        lines: [],
-        addedLines: [],
-        removedLines: [],
-      }
+      currentHunk = { header: line, oldStart, newStart, lines: [] }
       continue
     }
 
     if (!currentHunk) continue
 
     if (line.startsWith('+')) {
-      const content = line.slice(1)
-      currentHunk.lines.push({ type: 'added', content, oldLineNum: null, newLineNum })
-      currentHunk.addedLines.push(content)
+      currentHunk.lines.push({ type: 'added', content: line.slice(1), oldLineNum: null, newLineNum })
       newLineNum++
     } else if (line.startsWith('-')) {
-      const content = line.slice(1)
-      currentHunk.lines.push({ type: 'removed', content, oldLineNum, newLineNum: null })
-      currentHunk.removedLines.push(content)
+      currentHunk.lines.push({ type: 'removed', content: line.slice(1), oldLineNum, newLineNum: null })
       oldLineNum++
     } else if (line.startsWith(' ')) {
       const content = line.slice(1)
@@ -158,6 +145,10 @@ function splitIntoChunks(file: AnalyzedFileDiff, chunkSize: number): string[] {
 
   for (const hunk of file.hunks) {
     const hunkText = `${formatHunk(hunk)}\n`
+
+    if (hunkText.length > chunkSize) {
+      console.warn(`[DiffAnalyzer] hunk exceeds chunkSize (${hunkText.length} > ${chunkSize}): ${file.filename} ${hunk.header}`)
+    }
 
     // 현재 청크가 헤더만 있는 초기 상태가 아닐 때만 분리
     if (current.length + hunkText.length > chunkSize && current.length > header.length + 1) {
