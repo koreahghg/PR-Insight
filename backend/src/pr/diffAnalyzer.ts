@@ -1,4 +1,4 @@
-import { PRFile, FileStatus } from '../github/types'
+import { ParsedPR, PRFile, FileStatus } from '../github/types'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -125,5 +125,87 @@ export function analyzeFile(file: PRFile): AnalyzedFileDiff {
     previousFilename: file.previousFilename,
     hunks: file.patch ? parsePatch(file.patch) : [],
     hasPatch: file.patch !== null,
+  }
+}
+
+// ── Chunker & Formatter ────────────────────────────────────────────────────
+
+const DEFAULT_CHUNK_SIZE = 3000
+
+function formatHunk(hunk: DiffHunk): string {
+  const lineTexts = hunk.lines.map(line => {
+    const prefix = line.type === 'added' ? '+' : line.type === 'removed' ? '-' : ' '
+    return `${prefix}${line.content}`
+  })
+  return [hunk.header, ...lineTexts].join('\n')
+}
+
+function buildFileHeader(file: AnalyzedFileDiff, continued = false): string {
+  const rename = file.previousFilename ? ` (renamed from ${file.previousFilename})` : ''
+  const suffix = continued ? ' [continued]' : ''
+  return `### ${file.filename}${rename}${suffix}\nStatus: ${file.status} | +${file.additions} -${file.deletions}`
+}
+
+function splitIntoChunks(file: AnalyzedFileDiff, chunkSize: number): string[] {
+  const header = buildFileHeader(file)
+
+  if (!file.hasPatch || file.hunks.length === 0) {
+    return [`${header}\n(no diff available)`]
+  }
+
+  const chunks: string[] = []
+  let current = `${header}\n`
+
+  for (const hunk of file.hunks) {
+    const hunkText = `${formatHunk(hunk)}\n`
+
+    // 현재 청크가 헤더만 있는 초기 상태가 아닐 때만 분리
+    if (current.length + hunkText.length > chunkSize && current.length > header.length + 1) {
+      chunks.push(current.trimEnd())
+      current = `${buildFileHeader(file, true)}\n${hunkText}`
+    } else {
+      current += hunkText
+    }
+  }
+
+  if (current.trim()) chunks.push(current.trimEnd())
+  return chunks
+}
+
+// ── Main Entry ─────────────────────────────────────────────────────────────
+
+export function analyzeDiff(parsed: ParsedPR, chunkSize = DEFAULT_CHUNK_SIZE): AIReadyDiff {
+  const analyzedFiles = parsed.files.map(analyzeFile)
+
+  const fileSummaries: FileSummary[] = analyzedFiles.map(f => ({
+    filename: f.filename,
+    status: f.status,
+    additions: f.additions,
+    deletions: f.deletions,
+    previousFilename: f.previousFilename,
+  }))
+
+  const chunks: DiffChunk[] = analyzedFiles.flatMap(file => {
+    const parts = splitIntoChunks(file, chunkSize)
+    return parts.map((content, i) => ({
+      filename: file.filename,
+      chunkIndex: i,
+      totalChunks: parts.length,
+      content,
+    }))
+  })
+
+  return {
+    repository: parsed.repositoryFullName,
+    prNumber: parsed.number,
+    title: parsed.title,
+    author: parsed.author,
+    baseBranch: parsed.baseRef,
+    headBranch: parsed.headRef,
+    totalAdditions: parsed.files.reduce((sum, f) => sum + f.additions, 0),
+    totalDeletions: parsed.files.reduce((sum, f) => sum + f.deletions, 0),
+    changedFiles: parsed.files.length,
+    fileSummaries,
+    chunks,
   }
 }
