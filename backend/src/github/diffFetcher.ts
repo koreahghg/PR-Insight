@@ -8,7 +8,7 @@ export async function fetchPRFiles(
   prNumber: number,
 ): Promise<PRFile[]> {
   const files = await githubGet<GitHubPRFile[]>(
-    `/repos/${owner}/${repo}/pulls/${prNumber}/files`,
+    `/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=100`,
     token,
   );
 
