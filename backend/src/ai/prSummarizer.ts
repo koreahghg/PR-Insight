@@ -210,8 +210,8 @@ export async function summarizePR(aiReady: AIReadyDiff): Promise<PRSummaryResult
 // LLM 응답이 ```json ... ``` 코드블록으로 감싸인 경우에도 안전하게 파싱
 function parseJson<T>(raw: string, fallback: T): T {
   try {
-    const cleaned = raw.replace(/^```(?:json)?\n?/m, '').replace(/\n?```$/m, '').trim()
-    return JSON.parse(cleaned) as T
+    const jsonMatch = raw.match(/\{[\s\S]*\}/)
+    return JSON.parse(jsonMatch ? jsonMatch[0] : raw) as T
   } catch {
     console.warn('[PRSummarizer] JSON parse failed, using fallback.\nRaw:', raw)
     return fallback
