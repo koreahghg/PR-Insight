@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { GitHubWebhookPayload } from '../github/types';
 import { parsePRPayload } from '../pr/parser';
 import { analyzeDiff } from '../pr/diffAnalyzer';
+import { summarizePR } from '../ai/prSummarizer';
 
 const HANDLED_ACTIONS = new Set(['opened', 'synchronize', 'reopened']);
 
@@ -32,18 +33,25 @@ export function handleWebhook(req: Request, res: Response): void {
   res.status(200).json({ received: true, pr: payload.number });
 
   void parsePRPayload(payload)
-    .then((parsed) => {
+    .then(async (parsed) => {
       const diff = analyzeDiff(parsed);
       console.log('[PR] Analyzed', {
         repo: diff.repository,
         number: diff.prNumber,
-        title: diff.title,
-        author: diff.author,
         files: diff.fileSummaries.map(f => `${f.filename} (+${f.additions}/-${f.deletions})`),
         totalChunks: diff.chunks.length,
       });
+
+      const summary = await summarizePR(diff);
+      console.log('[PR] Summary generated', {
+        pr: `#${summary.prNumber} ${summary.title}`,
+        overallSummary: summary.overallSummary,
+        keyChanges: summary.keyChanges,
+        reviewPoints: summary.reviewPoints,
+        fileSummaries: summary.fileSummaries.map(f => `${f.filename}: ${f.summary}`),
+      });
     })
     .catch((err: unknown) => {
-      console.error('[PR] Parse failed', err instanceof Error ? err.message : err);
+      console.error('[PR] Processing failed', err instanceof Error ? err.message : err);
     });
 }
