@@ -1,5 +1,5 @@
 import { AIReadyDiff, DiffChunk } from '../pr/diffAnalyzer'
-import { chatCompletion } from './openaiClient'
+import { chatCompletion, parseAIJson } from './openaiClient'
 import { CodeReviewResult, ReviewCategoryName, ReviewIssue } from './types'
 
 // ── 프롬프트 전략 ──────────────────────────────────────────────────────────
@@ -76,7 +76,7 @@ async function reviewChunk(chunk: DiffChunk): Promise<{ filename: string; raw: C
 
   return {
     filename: chunk.filename,
-    raw: parseJson(response, EMPTY_REVIEW),
+    raw: parseAIJson(response, EMPTY_REVIEW, 'PRReviewer'),
   }
 }
 
@@ -122,14 +122,3 @@ export async function reviewPR(aiReady: AIReadyDiff): Promise<CodeReviewResult> 
   }
 }
 
-// ── 헬퍼 ──────────────────────────────────────────────────────────────────
-
-function parseJson<T>(raw: string, fallback: T): T {
-  try {
-    const jsonMatch = raw.match(/\{[\s\S]*\}/)
-    return JSON.parse(jsonMatch ? jsonMatch[0] : raw) as T
-  } catch {
-    console.warn('[PRReviewer] JSON parse failed, using fallback.\nRaw:', raw)
-    return fallback
-  }
-}

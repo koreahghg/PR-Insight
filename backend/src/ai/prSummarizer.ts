@@ -1,5 +1,5 @@
 import { AIReadyDiff, DiffChunk } from '../pr/diffAnalyzer'
-import { chatCompletion } from './openaiClient'
+import { chatCompletion, parseAIJson } from './openaiClient'
 import { FileSummaryResult, PRSummaryResult } from './types'
 
 // ── 프롬프트 전략 ──────────────────────────────────────────────────────────
@@ -67,7 +67,7 @@ async function summarizeChunk(chunk: DiffChunk): Promise<{ summary: string; chan
     { maxTokens: 300 }
   )
 
-  return parseJson(raw, { summary: `${chunk.filename} 변경됨`, changes: [] })
+  return parseAIJson(raw, { summary: `${chunk.filename} 변경됨`, changes: [] }, 'PRSummarizer')
 }
 
 // ── Stage 1b: 다중 chunk 집계 ──────────────────────────────────────────────
@@ -91,7 +91,7 @@ async function aggregateChunks(
     { maxTokens: 300 }
   )
 
-  return parseJson(raw, { summary: `${filename} 변경됨`, changes: [] })
+  return parseAIJson(raw, { summary: `${filename} 변경됨`, changes: [] }, 'PRSummarizer')
 }
 
 // ── Stage 1 진입점: 파일 단위 요약 ────────────────────────────────────────
@@ -150,11 +150,11 @@ async function generatePRSummary(
     { maxTokens: 600 }
   )
 
-  return parseJson(raw, {
-    overallSummary: `PR #${aiReady.prNumber} 분석 완료`,
-    keyChanges: [],
-    reviewPoints: [],
-  })
+  return parseAIJson(
+    raw,
+    { overallSummary: `PR #${aiReady.prNumber} 분석 완료`, keyChanges: [], reviewPoints: [] },
+    'PRSummarizer'
+  )
 }
 
 // ── 메인 진입점 ───────────────────────────────────────────────────────────
@@ -205,15 +205,3 @@ export async function summarizePR(aiReady: AIReadyDiff): Promise<PRSummaryResult
   }
 }
 
-// ── 헬퍼 ──────────────────────────────────────────────────────────────────
-
-// LLM 응답이 ```json ... ``` 코드블록으로 감싸인 경우에도 안전하게 파싱
-function parseJson<T>(raw: string, fallback: T): T {
-  try {
-    const jsonMatch = raw.match(/\{[\s\S]*\}/)
-    return JSON.parse(jsonMatch ? jsonMatch[0] : raw) as T
-  } catch {
-    console.warn('[PRSummarizer] JSON parse failed, using fallback.\nRaw:', raw)
-    return fallback
-  }
-}
