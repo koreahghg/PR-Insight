@@ -40,3 +40,14 @@ export async function chatCompletion(
   if (!content) throw new Error('Empty response from OpenAI')
   return content.trim()
 }
+
+// LLM 응답이 ```json ... ``` 코드블록으로 감싸인 경우에도 안전하게 파싱
+export function parseAIJson<T>(raw: string, fallback: T, tag: string): T {
+  try {
+    const jsonMatch = raw.match(/\{[\s\S]*\}/)
+    return JSON.parse(jsonMatch ? jsonMatch[0] : raw) as T
+  } catch {
+    console.warn(`[${tag}] JSON parse failed, using fallback.\nRaw:`, raw)
+    return fallback
+  }
+}

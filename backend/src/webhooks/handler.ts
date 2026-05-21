@@ -3,6 +3,7 @@ import { GitHubWebhookPayload } from '../github/types';
 import { parsePRPayload } from '../pr/parser';
 import { analyzeDiff } from '../pr/diffAnalyzer';
 import { summarizePR } from '../ai/prSummarizer';
+import { reviewPR } from '../ai/prReviewer';
 
 const HANDLED_ACTIONS = new Set(['opened', 'synchronize', 'reopened']);
 
@@ -42,13 +43,27 @@ export function handleWebhook(req: Request, res: Response): void {
         totalChunks: diff.chunks.length,
       });
 
-      const summary = await summarizePR(diff);
+      // 요약과 코드 리뷰는 독립적이므로 병렬 실행
+      const [summary, review] = await Promise.all([summarizePR(diff), reviewPR(diff)]);
+
       console.log('[PR] Summary generated', {
         pr: `#${summary.prNumber} ${summary.title}`,
         overallSummary: summary.overallSummary,
         keyChanges: summary.keyChanges,
         reviewPoints: summary.reviewPoints,
         fileSummaries: summary.fileSummaries.map(f => `${f.filename}: ${f.summary}`),
+      });
+
+      console.log('[PR] Code review completed', {
+        pr: `#${review.prNumber} ${review.title}`,
+        totalIssues: review.totalIssues,
+        issueCounts: {
+          bug: review.categories.bug.issues.length,
+          performance: review.categories.performance.issues.length,
+          style: review.categories.style.issues.length,
+          security: review.categories.security.issues.length,
+        },
+        categories: review.categories,
       });
     })
     .catch((err: unknown) => {
