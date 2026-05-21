@@ -38,12 +38,12 @@ function App() {
       </header>
 
       <main className="app-main">
-        {state.status !== 'result' && (
+        <div style={{ display: state.status === 'result' ? 'none' : 'block' }}>
           <RefactorForm
             onSubmit={handleSubmit}
             isLoading={state.status === 'loading'}
           />
-        )}
+        </div>
 
         {state.status === 'error' && (
           <div className="error-banner">

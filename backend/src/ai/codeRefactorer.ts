@@ -34,11 +34,6 @@ Respond ONLY with valid JSON (no markdown fences):
   "overallSummary": "string"
 }`
 
-const EMPTY_RESULT: RefactorResult = {
-  suggestions: [],
-  overallSummary: '분석 결과를 가져오는 데 실패했습니다.',
-}
-
 export async function generateRefactorSuggestions(
   code: string,
   language?: string,
@@ -46,7 +41,8 @@ export async function generateRefactorSuggestions(
 ): Promise<RefactorResult> {
   const langLine = language ? `Language: ${language}\n` : ''
   const contextLine = context ? `Context: ${context}\n` : ''
-  const userContent = `${langLine}${contextLine}\n\`\`\`\n${code}\n\`\`\``
+  const userContent =
+    langLine + contextLine + '\n<code_to_refactor>\n' + code + '\n</code_to_refactor>'
 
   const response = await chatCompletion(
     [
@@ -56,5 +52,7 @@ export async function generateRefactorSuggestions(
     { maxTokens: 1500 }
   )
 
-  return parseAIJson(response, EMPTY_RESULT, 'CodeRefactorer')
+  const result = parseAIJson<RefactorResult | null>(response, null, 'CodeRefactorer')
+  if (!result) throw new Error('AI 분석 결과를 파싱하는 데 실패했습니다.')
+  return result
 }
