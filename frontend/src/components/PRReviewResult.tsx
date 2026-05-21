@@ -2,6 +2,14 @@ import { CodeReviewResult, ReviewCategoryName, ReviewIssue, ReviewSeverity } fro
 
 const CATEGORY_ORDER: ReviewCategoryName[] = ['bug', 'security', 'performance', 'style']
 
+function sortCategoriesByCount(
+  categories: CodeReviewResult['categories']
+): ReviewCategoryName[] {
+  return [...CATEGORY_ORDER].sort(
+    (a, b) => categories[b].issues.length - categories[a].issues.length
+  )
+}
+
 type CategoryStyle = {
   label: string
   icon: string
@@ -116,7 +124,7 @@ function CategorySection({ name, issues }: { name: ReviewCategoryName; issues: R
           {issues.length}개
         </span>
       </div>
-      <div className="p-4 space-y-3" style={{ backgroundColor: 'rgba(22,27,34,0.5)' }}>
+      <div className="p-4 space-y-3 bg-gh-card/50">
         {issues.map((issue, i) => (
           <IssueCard key={i} issue={issue} />
         ))}
@@ -130,7 +138,7 @@ interface Props {
 }
 
 export function PRReviewResult({ result }: Props) {
-  const date = new Date(result.generatedAt).toLocaleString('ko-KR', {
+  const date = new Date(result.generatedAt).toLocaleString(undefined, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -138,7 +146,7 @@ export function PRReviewResult({ result }: Props) {
     minute: '2-digit',
   })
 
-  const categoriesWithIssues = CATEGORY_ORDER.filter(
+  const categoriesWithIssues = sortCategoriesByCount(result.categories).filter(
     (cat) => result.categories[cat].issues.length > 0
   )
 

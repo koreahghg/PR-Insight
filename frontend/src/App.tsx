@@ -117,7 +117,7 @@ function App() {
       </header>
 
       {/* 탭 네비게이션 */}
-      <div className="border-b border-[#21262d] flex gap-1 px-6" style={{ backgroundColor: '#0d1117' }}>
+      <div className="border-b border-gh-border2 flex gap-1 px-6 bg-gh-bg">
         {([
           { id: 'refactor' as TabId, label: '코드 리팩토링' },
           { id: 'review' as TabId, label: 'PR 리뷰' },
