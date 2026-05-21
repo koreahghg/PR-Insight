@@ -24,3 +24,32 @@ export interface PRSummaryResult {
   reviewPoints: string[]
   generatedAt: string
 }
+
+// ── 코드 리뷰 타입 ────────────────────────────────────────────────────────
+
+export type ReviewSeverity = 'high' | 'medium' | 'low'
+
+export type ReviewCategoryName = 'bug' | 'performance' | 'style' | 'security'
+
+export interface ReviewIssue {
+  filename: string
+  // diff 내 관련 라인 참조 (식별 가능한 경우에만 포함)
+  line?: string
+  severity: ReviewSeverity
+  description: string
+  suggestion?: string
+}
+
+export interface ReviewCategory {
+  issues: ReviewIssue[]
+}
+
+export interface CodeReviewResult {
+  prNumber: number
+  repository: string
+  title: string
+  author: string
+  categories: Record<ReviewCategoryName, ReviewCategory>
+  totalIssues: number
+  generatedAt: string
+}
