@@ -36,6 +36,6 @@ export class RequestCache<T> {
         .filter(([, v]) => v !== undefined)
         .sort(([a], [b]) => a.localeCompare(b)),
     )
-    return btoa(encodeURIComponent(JSON.stringify(sorted)))
+    return JSON.stringify(sorted)
   }
 }

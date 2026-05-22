@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { requestRefactor, cancelPendingRequest, RefactorRequest } from '../api/refactor'
+import { requestRefactor, RefactorRequest } from '../api/refactor'
 import { RefactorResult } from '../types/refactor'
 
 export type RefactorState =
@@ -11,24 +11,27 @@ export type RefactorState =
 export function useRefactor() {
   const [state, setState] = useState<RefactorState>({ status: 'idle' })
   const unmounted = useRef(false)
+  const controllerRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     return () => {
       unmounted.current = true
-      cancelPendingRequest()
+      controllerRef.current?.abort()
     }
   }, [])
 
   const submit = useCallback(async (req: RefactorRequest) => {
+    controllerRef.current?.abort()
+    controllerRef.current = new AbortController()
+
     setState({ status: 'loading' })
     try {
-      const data = await requestRefactor(req)
+      const data = await requestRefactor(req, controllerRef.current.signal)
       if (!unmounted.current) {
         setState({ status: 'result', data })
       }
     } catch (err) {
       if (unmounted.current) return
-      // AbortError는 사용자가 새 요청을 보낸 것이므로 에러로 처리하지 않음
       if (err instanceof DOMException && err.name === 'AbortError') return
       setState({
         status: 'error',

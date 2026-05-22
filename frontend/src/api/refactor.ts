@@ -9,20 +9,16 @@ export interface RefactorRequest {
 
 const cache = new RequestCache<RefactorResult>()
 const inFlight = new Map<string, Promise<RefactorResult>>()
-let currentController: AbortController | null = null
 
-export async function requestRefactor(payload: RefactorRequest): Promise<RefactorResult> {
-  // 진행 중인 이전 요청 취소
-  currentController?.abort()
-  currentController = new AbortController()
-  const signal = currentController.signal
-
+export async function requestRefactor(
+  payload: RefactorRequest,
+  signal?: AbortSignal,
+): Promise<RefactorResult> {
   const key = RequestCache.hashRequest(payload as unknown as Record<string, unknown>)
 
   const cached = cache.get(key)
   if (cached) return cached
 
-  // 동일 키로 이미 요청 중이면 같은 Promise 공유
   const existing = inFlight.get(key)
   if (existing) return existing
 
@@ -49,9 +45,4 @@ export async function requestRefactor(payload: RefactorRequest): Promise<Refacto
 
   inFlight.set(key, promise)
   return promise
-}
-
-export function cancelPendingRequest(): void {
-  currentController?.abort()
-  currentController = null
 }
