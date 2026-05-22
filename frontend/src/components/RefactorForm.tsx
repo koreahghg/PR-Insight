@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react'
+import { memo, useState, FormEvent } from 'react'
 import { RefactorRequest } from '../api/refactor'
 
 const LANGUAGES = [
@@ -11,7 +11,7 @@ interface Props {
   isLoading: boolean
 }
 
-export function RefactorForm({ onSubmit, isLoading }: Props) {
+export const RefactorForm = memo(function RefactorForm({ onSubmit, isLoading }: Props) {
   const [code, setCode] = useState('')
   const [language, setLanguage] = useState('')
   const [context, setContext] = useState('')
@@ -91,4 +91,4 @@ export function RefactorForm({ onSubmit, isLoading }: Props) {
       </button>
     </form>
   )
-}
+})
