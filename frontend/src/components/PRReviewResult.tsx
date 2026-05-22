@@ -135,9 +135,10 @@ function CategorySection({ name, issues }: { name: ReviewCategoryName; issues: R
 
 interface Props {
   result: CodeReviewResult
+  onReset?: () => void
 }
 
-export function PRReviewResult({ result }: Props) {
+export function PRReviewResult({ result, onReset }: Props) {
   const date = new Date(result.generatedAt).toLocaleString(undefined, {
     year: 'numeric',
     month: 'long',
@@ -165,9 +166,16 @@ export function PRReviewResult({ result }: Props) {
             <h2 className="text-lg font-semibold text-gh-bright leading-snug">{result.title}</h2>
             <p className="text-sm text-gh-muted mt-1">@{result.author}</p>
           </div>
-          <div className="text-right shrink-0">
-            <div className="text-3xl font-bold text-gh-bright tabular-nums">{result.totalIssues}</div>
-            <div className="text-xs text-gh-muted mt-0.5">개 이슈 발견</div>
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <div className="text-right">
+              <div className="text-3xl font-bold text-gh-bright tabular-nums">{result.totalIssues}</div>
+              <div className="text-xs text-gh-muted mt-0.5">개 이슈 발견</div>
+            </div>
+            {onReset && (
+              <button className="btn-reset" onClick={onReset}>
+                새 PR 분석
+              </button>
+            )}
           </div>
         </div>
         <div className="mt-4 pt-3.5 border-t border-gh-border2 text-xs text-gh-dim">
