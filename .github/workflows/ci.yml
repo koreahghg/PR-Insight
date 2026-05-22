@@ -28,3 +28,21 @@ jobs:
           NODE_ENV: test
           PORT: 4000
           CORS_ORIGIN: http://localhost:3000
+
+  test-frontend:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 의존성 설치
+        run: npm ci
+
+      - name: 프론트엔드 테스트 실행
+        run: npm run test:run -w frontend
