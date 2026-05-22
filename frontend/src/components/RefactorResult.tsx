@@ -1,4 +1,5 @@
-import { RefactorResult, RefactorSuggestion, RefactorCategory, RefactorImpact } from '../types/refactor'
+import { memo } from 'react'
+import type { RefactorResult as RefactorResultData, RefactorSuggestion, RefactorCategory, RefactorImpact } from '../types/refactor'
 
 const CATEGORY_LABEL: Record<RefactorCategory, string> = {
   readability: '가독성',
@@ -18,7 +19,7 @@ interface SuggestionCardProps {
   index: number
 }
 
-function SuggestionCard({ suggestion, index }: SuggestionCardProps) {
+const SuggestionCard = memo(function SuggestionCard({ suggestion, index }: SuggestionCardProps) {
   return (
     <div className="suggestion-card">
       <div className="suggestion-header">
@@ -52,14 +53,14 @@ function SuggestionCard({ suggestion, index }: SuggestionCardProps) {
       </div>
     </div>
   )
-}
+})
 
 interface Props {
-  result: RefactorResult
+  result: RefactorResultData
   onReset: () => void
 }
 
-export function RefactorResult({ result, onReset }: Props) {
+export const RefactorResult = memo(function RefactorResult({ result, onReset }: Props) {
   return (
     <div className="refactor-result">
       <div className="result-header">
@@ -89,4 +90,4 @@ export function RefactorResult({ result, onReset }: Props) {
       </div>
     </div>
   )
-}
+})
