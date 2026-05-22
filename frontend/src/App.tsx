@@ -2,17 +2,10 @@ import { useState } from 'react'
 import { RefactorForm } from './components/RefactorForm'
 import { RefactorResult } from './components/RefactorResult'
 import { PRReviewResult } from './components/PRReviewResult'
-import { requestRefactor, RefactorRequest } from './api/refactor'
-import { RefactorResult as RefactorResultType } from './types/refactor'
+import { useRefactor } from './hooks/useRefactor'
 import { CodeReviewResult } from './types/review'
 
 type TabId = 'refactor' | 'review'
-
-type RefactorState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'result'; data: RefactorResultType }
-  | { status: 'error'; message: string }
 
 const MOCK_REVIEW: CodeReviewResult = {
   prNumber: 42,
@@ -27,14 +20,16 @@ const MOCK_REVIEW: CodeReviewResult = {
           line: '42',
           severity: 'high',
           description: '세션 토큰이 만료된 후에도 유효성 검사 없이 사용될 수 있습니다.',
-          suggestion: 'isExpired() 체크를 미들웨어에서 반드시 수행하거나, 토큰 검증 시 만료 시간을 항상 확인하세요.',
+          suggestion:
+            'isExpired() 체크를 미들웨어에서 반드시 수행하거나, 토큰 검증 시 만료 시간을 항상 확인하세요.',
         },
         {
           filename: 'src/auth/oauth.ts',
           line: '18',
           severity: 'medium',
           description: 'state 파라미터 검증이 없어 CSRF 공격에 취약합니다.',
-          suggestion: 'OAuth flow 시작 시 무작위 state 값을 생성하고, 콜백에서 반드시 일치 여부를 검증하세요.',
+          suggestion:
+            'OAuth flow 시작 시 무작위 state 값을 생성하고, 콜백에서 반드시 일치 여부를 검증하세요.',
         },
       ],
     },
@@ -45,7 +40,8 @@ const MOCK_REVIEW: CodeReviewResult = {
           line: '9',
           severity: 'high',
           description: 'CLIENT_SECRET이 클라이언트 번들에 포함될 수 있는 방식으로 임포트되고 있습니다.',
-          suggestion: '서버 전용 환경변수는 VITE_ 접두사 없이 사용하고, 서버 코드에서만 접근하도록 분리하세요.',
+          suggestion:
+            '서버 전용 환경변수는 VITE_ 접두사 없이 사용하고, 서버 코드에서만 접근하도록 분리하세요.',
         },
         {
           filename: 'src/api/user.ts',
@@ -90,24 +86,7 @@ const MOCK_REVIEW: CodeReviewResult = {
 
 function App() {
   const [activeTab, setActiveTab] = useState<TabId>('refactor')
-  const [refactorState, setRefactorState] = useState<RefactorState>({ status: 'idle' })
-
-  async function handleRefactorSubmit(req: RefactorRequest) {
-    setRefactorState({ status: 'loading' })
-    try {
-      const data = await requestRefactor(req)
-      setRefactorState({ status: 'result', data })
-    } catch (err) {
-      setRefactorState({
-        status: 'error',
-        message: err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.',
-      })
-    }
-  }
-
-  function handleRefactorReset() {
-    setRefactorState({ status: 'idle' })
-  }
+  const { state: refactorState, submit, reset } = useRefactor()
 
   return (
     <div className="app">
@@ -116,7 +95,6 @@ function App() {
         <p className="app-subtitle">AI 기반 코드 분석 도구</p>
       </header>
 
-      {/* 탭 네비게이션 */}
       <div className="border-b border-gh-border2 flex gap-1 px-6 bg-gh-bg">
         {([
           { id: 'refactor' as TabId, label: '코드 리팩토링' },
@@ -138,12 +116,11 @@ function App() {
       </div>
 
       <main className="app-main">
-        {/* 코드 리팩토링 탭 */}
         {activeTab === 'refactor' && (
           <>
             <div style={{ display: refactorState.status === 'result' ? 'none' : 'block' }}>
               <RefactorForm
-                onSubmit={handleRefactorSubmit}
+                onSubmit={submit}
                 isLoading={refactorState.status === 'loading'}
               />
             </div>
@@ -151,22 +128,19 @@ function App() {
             {refactorState.status === 'error' && (
               <div className="error-banner">
                 <span>{refactorState.message}</span>
-                <button className="error-retry" onClick={handleRefactorReset}>
+                <button className="error-retry" onClick={reset}>
                   다시 시도
                 </button>
               </div>
             )}
 
             {refactorState.status === 'result' && (
-              <RefactorResult result={refactorState.data} onReset={handleRefactorReset} />
+              <RefactorResult result={refactorState.data} onReset={reset} />
             )}
           </>
         )}
 
-        {/* PR 리뷰 탭 */}
-        {activeTab === 'review' && (
-          <PRReviewResult result={MOCK_REVIEW} />
-        )}
+        {activeTab === 'review' && <PRReviewResult result={MOCK_REVIEW} />}
       </main>
     </div>
   )
