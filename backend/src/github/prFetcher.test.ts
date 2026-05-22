@@ -25,6 +25,11 @@ describe('parsePRUrl', () => {
     })
   })
 
+  it('evilgithub.com 같은 유사 도메인에는 null을 반환한다', () => {
+    expect(parsePRUrl('https://evilgithub.com/owner/repo/pull/1')).toBeNull()
+    expect(parsePRUrl('evilgithub.com/owner/repo/pull/1')).toBeNull()
+  })
+
   it('GitLab URL에는 null을 반환한다', () => {
     expect(parsePRUrl('https://gitlab.com/owner/repo/merge_requests/1')).toBeNull()
   })

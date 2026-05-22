@@ -4,7 +4,7 @@ import { generateRefactorSuggestions } from '../ai/codeRefactorer'
 
 const router = Router()
 
-router.post('/', express.json(), async (req: Request, res: Response) => {
+router.post('/', express.json({ limit: '1mb' }), async (req: Request, res: Response) => {
   const { code, language, context } = req.body
 
   if (!code || typeof code !== 'string' || code.trim().length === 0) {

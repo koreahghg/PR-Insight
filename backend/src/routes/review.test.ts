@@ -1,5 +1,6 @@
 import request from 'supertest'
 import app from '../app'
+import { GitHubApiError } from '../github/client'
 import * as prFetcher from '../github/prFetcher'
 import * as diffAnalyzer from '../pr/diffAnalyzer'
 import * as prReviewer from '../ai/prReviewer'
@@ -106,7 +107,7 @@ describe('POST /api/review', () => {
   })
 
   it('PR이 존재하지 않으면 404를 반환한다', async () => {
-    mockFetchPR.mockRejectedValue(new Error('GitHub API 404: Not Found'))
+    mockFetchPR.mockRejectedValue(new GitHubApiError(404, 'GitHub API 404: Not Found'))
 
     const res = await request(app)
       .post('/api/review')

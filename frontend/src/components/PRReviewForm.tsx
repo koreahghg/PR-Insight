@@ -14,7 +14,7 @@ export const PRReviewForm = memo(function PRReviewForm({ onSubmit, isLoading }: 
     onSubmit(prUrl.trim())
   }
 
-  const isValid = /github\.com\/[^/]+\/[^/]+\/pull\/\d+/.test(prUrl)
+  const isValid = /^(?:https?:\/\/)?(?:www\.)?github\.com\/[^/]+\/[^/]+\/pull\/\d+/.test(prUrl)
 
   return (
     <form className="refactor-form" onSubmit={handleSubmit}>

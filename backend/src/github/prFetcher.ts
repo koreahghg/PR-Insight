@@ -3,7 +3,7 @@ import { GitHubPullRequest, ParsedPR } from './types'
 import { fetchPRFiles } from './diffFetcher'
 
 export function parsePRUrl(url: string): { owner: string; repo: string; prNumber: number } | null {
-  const match = /github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/.exec(url)
+  const match = /^(?:https?:\/\/)?(?:www\.)?github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/.exec(url)
   if (!match) return null
   return { owner: match[1], repo: match[2], prNumber: parseInt(match[3], 10) }
 }

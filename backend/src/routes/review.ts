@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express'
 import express from 'express'
+import { GitHubApiError } from '../github/client'
 import { parsePRUrl, fetchPR } from '../github/prFetcher'
 import { analyzeDiff } from '../pr/diffAnalyzer'
 import { reviewPR } from '../ai/prReviewer'
@@ -28,12 +29,16 @@ router.post('/', express.json(), async (req: Request, res: Response) => {
     const result = await reviewPR(aiReady)
     res.json(result)
   } catch (err) {
-    const message = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.'
-
-    if (message.includes('404')) {
-      res.status(404).json({ error: 'PR을 찾을 수 없습니다. URL을 확인해주세요.' })
+    if (err instanceof GitHubApiError) {
+      if (err.status === 404) {
+        res.status(404).json({ error: 'PR을 찾을 수 없습니다. URL을 확인해주세요.' })
+        return
+      }
+      res.status(502).json({ error: `GitHub API 오류가 발생했습니다. (${err.status})` })
       return
     }
+
+    const message = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.'
     if (message.includes('GITHUB_TOKEN')) {
       res.status(500).json({ error: 'GitHub 토큰이 설정되지 않았습니다.' })
       return

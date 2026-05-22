@@ -1,5 +1,12 @@
 const GITHUB_API_BASE = 'https://api.github.com';
 
+export class GitHubApiError extends Error {
+  constructor(public readonly status: number, message: string) {
+    super(message)
+    this.name = 'GitHubApiError'
+  }
+}
+
 export async function githubGet<T>(path: string, token: string): Promise<T> {
   const response = await fetch(`${GITHUB_API_BASE}${path}`, {
     headers: {
@@ -12,7 +19,7 @@ export async function githubGet<T>(path: string, token: string): Promise<T> {
 
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(`GitHub API ${response.status}: ${body}`);
+    throw new GitHubApiError(response.status, `GitHub API ${response.status}: ${body}`);
   }
 
   return response.json() as Promise<T>;
