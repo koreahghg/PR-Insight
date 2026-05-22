@@ -1,9 +1,10 @@
 import { Router, Request, Response } from 'express'
+import express from 'express'
 import { generateRefactorSuggestions } from '../ai/codeRefactorer'
 
 const router = Router()
 
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', express.json(), async (req: Request, res: Response) => {
   const { code, language, context } = req.body
 
   if (!code || typeof code !== 'string' || code.trim().length === 0) {
