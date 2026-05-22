@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express'
-import express from 'express'
 import { GitHubApiError } from '../github/client'
 import { parsePRUrl, fetchPR } from '../github/prFetcher'
 import { analyzeDiff } from '../pr/diffAnalyzer'
@@ -7,7 +6,7 @@ import { reviewPR } from '../ai/prReviewer'
 
 const router = Router()
 
-router.post('/', express.json(), async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   const { prUrl } = req.body
 
   if (!prUrl || typeof prUrl !== 'string' || prUrl.trim().length === 0) {
